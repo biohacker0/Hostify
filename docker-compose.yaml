@@ -1,0 +1,120 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - connecting_network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:6.2-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --save 20 1 --loglevel warning --requirepass eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81
+    depends_on:
+      - rabbitmq
+    networks:
+      - connecting_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    restart: always
+    ports:
+      - "5540:5540"
+    networks:
+      - connecting_network
+
+  service1:
+    build:
+      context: ./service1
+      dockerfile: Dockerfile
+    container_name: service1
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - RABBIT_MQ_URL=amqp://rabbitmq
+      - REDIS_IP=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81
+      - SERVICE1_IP=localhost
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - connecting_network
+    restart: on-failure
+    # Add a healthcheck for service1 itself
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 40s # Give it time to start up
+
+  service2:
+    build:
+      context: ./service2
+      dockerfile: Dockerfile
+    container_name: service2
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - RABBIT_MQ_URL=amqp://rabbitmq
+      - REDIS_IP=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81
+      - S3_ENDPOINT= # Add your endpoint like nyc3.digitaloceanspaces.com
+      - S3_BUCKET_NAME= # Add your bucket name like my-bucket
+      - AWS_ACCESS_KEY_ID= # Add your access key like 3XJ3JXJ3JXJ3JXJ3JXJ3
+      - AWS_SECRET_ACCESS_KEY= # Add your secret access key like 3XJ3JXJ3JXJ3JXJ3JXJ3
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - connecting_network
+    # Add a healthcheck for service1 itself
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 40s # Give it time to start up
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    depends_on:
+      - service1
+    networks:
+      - connecting_network
+
+networks:
+  connecting_network:
+    # Specify driver options
+    driver: bridge
