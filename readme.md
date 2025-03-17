@@ -127,7 +127,3 @@ Each deployment has one of these statuses:
 - `repo built successfully` → Build completed
 - `repo deployed successfully` → Deployment completed
 - `deployment failed` → Something went wrong
-
-## License
-
-[MIT License](LICENSE)
