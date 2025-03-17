@@ -55,8 +55,8 @@ Everything runs in containers, with a simple service-based design:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/self-hosted-vercel.git
-cd self-hosted-vercel
+git clone https://github.com/biohacker0/Hostify.git
+cd Hostify
 ```
 
 ### 2. Configure environment variables
